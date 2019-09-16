@@ -1,0 +1,8 @@
+syntax = "proto3";
+package proto;
+
+message Msg{
+    string Autor = 1;
+    string Text = 2;
+    string Date = 3;
+}
