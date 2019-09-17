@@ -94,7 +94,7 @@ func (myNode *Node) StartNode(goroutinesAmount, spamAmount int) {
 		go myNode.SpamMsgs(spamAmount / goroutinesAmount)
 	}
 
-	myNode.WriteMessage()
+	myNode.Commands()
 }
 
 func (myNode *Node) SpamMsgs(amount int){
@@ -123,21 +123,30 @@ func (myNode *Node) SpamMsgs(amount int){
 	log.Info().Msg("Message size:  " + msgSize)
 }
 
-func (myNode Node) WriteMessage(){
+func (myNode Node) Commands(){
 	reader := bufio.NewReader(os.Stdin)
 	for {
-		fmt.Print(myNode.NodeName, ": ")
 		txt, err := reader.ReadString('\n')
-
 		if err != nil {
 			panic(err)
 		}
 
-		skademlia.BroadcastAsync(myNode.Node, Msg{
-				Autor: "Vladislav",
-				Text: strings.TrimSpace(txt),
-				Date: time.Now().String(),
-			},
-		)
+		if strings.Contains(txt, "peers"){
+			//fmt.Println(myNode.Node.Keys.String())
+			nodesInfo := []NodeInfo{}
+			allNodes := skademlia.FindNode(myNode.Node, protocol.NodeID(myNode.Node).(skademlia.ID), 128, 128)
+			allIPs := skademlia.Table(myNode.Node).GetPeers()
+			for i := 0; i < len(allNodes); i++ {
+				nodeInfo := NodeInfo{
+					PubKey: fmt.Sprintf("%x", allNodes[i].PublicKey()),
+					Hash:   fmt.Sprintf("%x", allNodes[i].Hash()),
+					IPAddr: allIPs[i],
+				}
+				nodesInfo = append(nodesInfo, nodeInfo)
+			}
+			fmt.Println(nodesInfo)
+			continue
+		}
+
 	}
 }

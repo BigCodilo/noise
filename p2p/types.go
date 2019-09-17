@@ -10,7 +10,8 @@ import (
 
 type Msg proto.Msg
 
-func (m Msg) Read(reader payload.Reader) (noise.Message, error) {
+func (Msg) Read(reader payload.Reader) (noise.Message, error) {
+
 	text, err := reader.ReadString()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read chat msg")
@@ -20,7 +21,6 @@ func (m Msg) Read(reader payload.Reader) (noise.Message, error) {
 }
 
 func (m Msg) Write() []byte {
-
 	return payload.NewWriter(nil).WriteString(fmt.Sprintf("Autor: %v, Text: %v, Date: %v", m.Autor, m.Text, m.Date)).Bytes()
 }
 
@@ -38,4 +38,11 @@ func NewNode(ip string, port uint, name string) Node{
 		Port:   port,
 		NodeName: name,
 	}
+}
+
+
+type NodeInfo struct{
+	IPAddr string
+	PubKey string
+	Hash string
 }
