@@ -19,37 +19,33 @@ import (
 /** DEFINE MESSAGES111 **/
 var (
 	opcodeChat noise.Opcode
-	_          noise.Message = (*Msg)(nil)
+	//_          noise.Message = (*Msg)(nil)
 )
 
 /** ENTRY POINT **/
 func (myNode *Node) setup() {
 	opcodeChat = noise.RegisterMessage(noise.NextAvailableOpcode(), (*Msg)(nil))
-
 	myNode.Node.OnPeerInit(func(node *noise.Node, peer *noise.Peer) error {
 		peer.OnConnError(func(node *noise.Node, peer *noise.Peer, err error) error {
 			log.Info().Msgf("Got an error: %v", err)
-
 			return nil
 		})
-
 		peer.OnDisconnect(func(node *noise.Node, peer *noise.Peer) error {
 			log.Info().Msgf("Peer %v has disconnected.", peer.RemoteIP().String()+":"+strconv.Itoa(int(peer.RemotePort())))
 
 			return nil
 		})
-
 		go func() {
 			for {
 				msg := <-peer.Receive(opcodeChat)
 				log.Info().Msgf("[%s]: %s", protocol.PeerID(peer), msg.(Msg).Text)
 			}
 		}()
-
 		return nil
 	})
 }
 
+//Запуск ноды
 func (myNode *Node) StartNode(goroutinesAmount, spamAmount int) {
 
 	params := noise.DefaultParams()
@@ -61,6 +57,7 @@ func (myNode *Node) StartNode(goroutinesAmount, spamAmount int) {
 	var err error
 
 	myNode.Node, err = noise.NewNode(params)
+	GlobalNode = *myNode
 	if err != nil {
 		panic(err)
 	}
@@ -91,14 +88,14 @@ func (myNode *Node) StartNode(goroutinesAmount, spamAmount int) {
 	}
 
 	for i := 0; i < goroutinesAmount; i++{
-		go myNode.SpamMsgs(spamAmount / goroutinesAmount)
+		go myNode.TxsToMempool(spamAmount / goroutinesAmount)
 	}
 
 	myNode.Commands()
 }
 
-func (myNode *Node) SpamMsgs(amount int){
-	start := time.Now()
+//Отправляет огромное кол-во сообщений на все ноды, делает это в нескольких горутинах
+func (myNode *Node) TxsToMempool(amount int){
 	var msgProto Msg
 	for i := 0; i < amount; i++{
 		msgProto = Msg{
@@ -112,18 +109,27 @@ func (myNode *Node) SpamMsgs(amount int){
 				"officia deserunt mollit anim id est laborum",
 			Date:                 time.Now().String(),
 		}
-
-		skademlia.BroadcastAsync(myNode.Node, msgProto)
+		myNode.Mempool.AddTx(msgProto)
+		//skademlia.BroadcastAsync(myNode.Node, msgProto)
 		//time.Sleep(100 * time.Millisecond)
+	}
+
+}
+
+func (myNode *Node) SendAllTxs(){
+	start := time.Now()
+	totalTxs := myNode.Mempool.GetTxAmount()
+	for i := 0 ; i < totalTxs; i++{
+		skademlia.BroadcastAsync(myNode.Node, myNode.Mempool[i])
+		myNode.Mempool[i] = nil
 	}
 	end := time.Now()
 	result := end.Sub(start).String()
-	log.Info().Msg("Tatal time for " + strconv.Itoa(amount) + " messages: " + result)
-	msgSize := strconv.Itoa(len(msgProto.Date) + len(msgProto.Autor) + len(msgProto.Text))
-	log.Info().Msg("Message size:  " + msgSize)
+	log.Info().Msg("Tatal time for " + strconv.Itoa(totalTxs) + " messages: " + result)
 }
 
-func (myNode Node) Commands(){
+//Ждет ввода команды, для взаимодействия с с приложением
+func (myNode *Node) Commands(){
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		txt, err := reader.ReadString('\n')
@@ -148,5 +154,16 @@ func (myNode Node) Commands(){
 			continue
 		}
 
+		if strings.Contains(txt, "mempool"){
+			fmt.Println(myNode.Mempool)
+		}
+
+		if strings.Contains(txt, "memsize"){
+			fmt.Println(myNode.Mempool.GetTxAmount())
+		}
+
+		if strings.Contains(txt, "send"){
+			myNode.SendAllTxs()
+		}
 	}
 }
