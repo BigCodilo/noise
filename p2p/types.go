@@ -21,7 +21,7 @@ func (m Msg) Read(reader payload.Reader) (noise.Message, error) {
 
 func (m Msg) Write() []byte {
 
-	return payload.NewWriter(nil).WriteString(fmt.Sprintf("Autor: %v, Text: %v, Date: %v, NodesVisited: %v", m.Autor, m.Text, m.Date, m.VN)).Bytes()
+	return payload.NewWriter(nil).WriteString(fmt.Sprintf("Autor: %v, Text: %v, Date: %v", m.Autor, m.Text, m.Date)).Bytes()
 }
 
 type Node struct{

@@ -16,8 +16,6 @@ import (
 	"time"
 )
 
-var Node1 *Node
-
 /** DEFINE MESSAGES111 **/
 var (
 	opcodeChat noise.Opcode
@@ -66,7 +64,6 @@ func (myNode *Node) StartNode(goroutinesAmount, spamAmount int) {
 	if err != nil {
 		panic(err)
 	}
-	Node1 = myNode
 	defer myNode.Node.Kill()
 
 	p := protocol.New()
