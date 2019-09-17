@@ -137,6 +137,7 @@ func (myNode *Node) Commands(){
 			panic(err)
 		}
 
+		//Возвращает списо5к всех нод
 		if strings.Contains(txt, "peers"){
 			//fmt.Println(myNode.Node.Keys.String())
 			nodesInfo := []NodeInfo{}
@@ -154,14 +155,17 @@ func (myNode *Node) Commands(){
 			continue
 		}
 
+		//Выводит на экран все элемента мемпула
 		if strings.Contains(txt, "mempool"){
 			fmt.Println(myNode.Mempool)
 		}
 
+		//Возвращает размер мемпула
 		if strings.Contains(txt, "memsize"){
 			fmt.Println(myNode.Mempool.GetTxAmount())
 		}
 
+		//Отправляет все транзакции из мемпула
 		if strings.Contains(txt, "send"){
 			myNode.SendAllTxs()
 		}
