@@ -2,29 +2,42 @@ package p2p
 
 import (
 	"fmt"
+	//"github.com/BigCodilo/noise/proto"
+	pb "github.com/golang/protobuf/proto"
+
 	"github.com/perlin-network/noise"
 	"github.com/perlin-network/noise/payload"
 	"github.com/pkg/errors"
 	"noise/mempool"
-	"noise/proto"
+	. "noise/proto"
 )
 
 //Тип сообщения с протобафа
-type Msg proto.Msg
-
+//type Msg proto.Msg
+type myString string
+type MyMsg struct{
+	*Msg
+}
 //Первая часть реализации ипнтерфейса для отправки сообщения внутри нойцза, вызывается когда приходит какое-то сообщение
-func (Msg) Read(reader payload.Reader) (noise.Message, error) {
-	text, err := reader.ReadString()
+//Первая часть реализации ипнтерфейса для отправки сообщения внутри нойцза, вызывается когда приходит какое-то сообщение
+func (m MyMsg) Read(reader payload.Reader) (noise.Message, error) {
+	text, err := reader.ReadBytes()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read chat msg")
 	}
-	return Msg{Text: text}, nil
+	myMsg := MyMsg{Msg:new(Msg)}
+	err = pb.Unmarshal(text, myMsg.Msg)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return myMsg, nil
 }
 
 //Вторая часмть реализации интерфейса для отправки сообщений внутри нойза
-func (m Msg) Write() []byte {
-	fmt.Println(3)
-	return payload.NewWriter(nil).WriteString(fmt.Sprintf("Autor: %v, Text: %v, Date: %v", m.Autor, m.Text, m.Date)).Bytes()
+func (m MyMsg) Write() []byte {
+	msgProto, _ := pb.Marshal(m)
+	fmt.Println(len(msgProto))
+	return payload.NewWriter(nil).WriteString(string(msgProto)).Bytes()
 }
 
 //Расширенная структура ноды

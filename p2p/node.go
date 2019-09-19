@@ -10,6 +10,7 @@ import (
 	"github.com/perlin-network/noise/log"
 	"github.com/perlin-network/noise/protocol"
 	"github.com/perlin-network/noise/skademlia"
+	"noise/proto"
 	"os"
 	"strconv"
 	"strings"
@@ -24,7 +25,11 @@ var (
 
 /** ENTRY POINT **/
 func (myNode *Node) setup() {
-	opcodeChat = noise.RegisterMessage(noise.NextAvailableOpcode(), (*Msg)(nil))
+	opcodeChat = noise.RegisterMessage(noise.NextAvailableOpcode(), (*MyMsg)(nil))
+	myNode.Node.OnPeerConnected(func(node *noise.Node, peer *noise.Peer) error{
+		fmt.Println("Peeeeeeeeeeeeeeer connected")
+		return nil
+	})
 	myNode.Node.OnPeerInit(func(node *noise.Node, peer *noise.Peer) error {
 		peer.OnConnError(func(node *noise.Node, peer *noise.Peer, err error) error {
 			log.Info().Msgf("Got an error: %v", err)
@@ -38,7 +43,7 @@ func (myNode *Node) setup() {
 		go func() {
 			for {
 				msg := <-peer.Receive(opcodeChat)
-				log.Info().Msgf("[%s]: %s", protocol.PeerID(peer), msg.(Msg).Text)
+				log.Info().Msgf("[%s]: %s", protocol.PeerID(peer), msg.(MyMsg).Text)
 			}
 		}()
 		return nil
@@ -57,7 +62,6 @@ func (myNode *Node) StartNode(goroutinesAmount, spamAmount int) {
 	var err error
 
 	myNode.Node, err = noise.NewNode(params)
-	GlobalNode = *myNode
 	if err != nil {
 		panic(err)
 	}
@@ -96,20 +100,20 @@ func (myNode *Node) StartNode(goroutinesAmount, spamAmount int) {
 
 //Отправляет огромное кол-во сообщений на все ноды, делает это в нескольких горутинах
 func (myNode *Node) TxsToMempool(amount int){
-	var msgProto Msg
+	var msg MyMsg
+	var text string
+	for i := 0; i < 700; i++{
+		text += "q"
+	}
 	for i := 0; i < amount; i++{
-		msgProto = Msg{
-			Autor:                "Vladislav",
-			Text:                 "Lorem ipsum dolor sit amet, consectetur adipiscing elit, " +
-				"sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. " +
-				"Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris " +
-				"nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in " +
-				"reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. " +
-				"Excepteur sint occaecat cupidatat non proident, sunt in culpa qui " +
-				"officia deserunt mollit anim id est laborum",
-			Date:                 time.Now().String(),
+		msg = MyMsg{
+			&proto.Msg{Autor: "Vladislav",
+				Text: text,
+				Date: time.Now().String(),
+			},
 		}
-		myNode.Mempool.AddTx(msgProto)
+
+		myNode.Mempool.AddTx(msg)
 		//skademlia.BroadcastAsync(myNode.Node, msgProto)
 		//time.Sleep(100 * time.Millisecond)
 	}
@@ -119,6 +123,7 @@ func (myNode *Node) TxsToMempool(amount int){
 func (myNode *Node) SendAllTxs(){
 	start := time.Now()
 	totalTxs := myNode.Mempool.GetTxAmount()
+	oneOfMsg := myNode.Mempool[1].(MyMsg)
 	for i := 0 ; i < totalTxs; i++{
 		skademlia.BroadcastAsync(myNode.Node, myNode.Mempool[i])
 		myNode.Mempool[i] = nil
@@ -126,6 +131,7 @@ func (myNode *Node) SendAllTxs(){
 	end := time.Now()
 	result := end.Sub(start).String()
 	log.Info().Msg("Tatal time for " + strconv.Itoa(totalTxs) + " messages: " + result)
+	log.Info().Msg("Message size: " + strconv.Itoa(len(oneOfMsg.Autor) + len(oneOfMsg.Text) + len(oneOfMsg.Date)))
 }
 
 //Ждет ввода команды, для взаимодействия с с приложением
@@ -168,6 +174,18 @@ func (myNode *Node) Commands(){
 		//Отправляет все транзакции из мемпула
 		if strings.Contains(txt, "send"){
 			myNode.SendAllTxs()
+		}
+
+		if strings.Contains(txt, "set_key"){
+			myNode.Node.Set("isnode", "yes")
+		}
+
+		if strings.Contains(txt, "get_key"){
+			fmt.Println(myNode.Node.Get("isnode"))
+		}
+
+		if strings.Contains(txt, "newpeer"){
+
 		}
 	}
 }
